@@ -19,6 +19,7 @@ type Server = structs.Server
 
 func main() {
 	router := gin.Default()
+	router.Use(gin.Recovery())
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
