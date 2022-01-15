@@ -24,21 +24,33 @@ vi .env.development
 After setting up the enviroment you can run: 
 
 ```bash
-go run main.go
+go run cmd/go-todo/go-todo.go
 ```
+
+for dev envs you can cd into `cmd/go-todo` and run `air` to watch file reloads - [Air lib](https://github.com/cosmtrek/air)
 
 It will be running on `http://localhost:8080`.
 
 ## Folder Structure
 
 ```
-├── components
-│   └── items
-│       ├── api.go
-│       ├── model.go
-│       └── routes.go
+├── cmd
+│   └── go-todo
+│       ├── go-todo.go
+│       └── tmp
+│           ├── build-errors.log
+│           └── main
 ├── go.mod
 ├── go.sum
-├── main.go
-└── readme.md
+├── internal
+│   ├── items
+│   │   └── items.go
+│   └── structs
+│       └── structs.go
+├── readme.md
+├── src
+│   └── app
+└── tmp
+    ├── build-errors.log
+    └── main
 ```
