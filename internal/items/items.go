@@ -15,8 +15,8 @@ import (
 
 type Todo struct {
 	Id          uuid.UUID `json:"id,omitempty"`
-	Title       string    `json:"title,omitempty" binding:"required"`
-	Description string    `json:"description,omitempty" binding:"required"`
+	Title       string    `json:"title,omitempty"`
+	Description string    `json:"description,omitempty"`
 	Done        bool      `json:"done,omitempty"`
 	CreatedAt   time.Time `json:"created-at,omitempty"`
 	UpdatedAt   time.Time `json:"updated-at,omitempty"`
@@ -47,7 +47,9 @@ func getAllItems(server *structs.Server) gin.HandlerFunc {
 		}
 
 		// fmt.Printf("Student read from redis : %#v\n", readTodo)
-		c.JSON(http.StatusOK, gin.H{"data": allTodo})
+		c.JSON(http.StatusOK,
+			gin.H{"data": allTodo,
+				"size": len(allTodo)})
 	}
 }
 
@@ -74,11 +76,51 @@ func getItem(server *structs.Server) gin.HandlerFunc {
 	}
 }
 
+func deleteItem(server *structs.Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		todoId := c.Param("todo-id")
+
+		res, err := server.Database.RedisJSONHandler.JSONDel("todo:"+todoId, ".")
+		if err != nil {
+			helpers.ErrorLogger.Printf("Failed to JSONGet error %v", err)
+			c.JSON(http.StatusNotFound, gin.H{})
+			return
+		}
+		helpers.InfoLogger.Printf("Item deleted %v", todoId)
+
+		c.JSON(http.StatusOK, gin.H{"data": gin.H{"rows affected": res}})
+	}
+}
+
+// NOT WORKING
+func updateItem(server *structs.Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		todoId := c.Param("todo-id")
+		var todo Todo
+		fmt.Println(todo)
+		if err := c.BindJSON(&todo); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		res, err := server.Database.RedisJSONHandler.JSONSet("todo:"+todoId, ".", todo)
+		if err != nil {
+			log.Fatalf("Failed to JSONSet")
+			return
+		}
+
+		fmt.Println(res)
+
+		//RESPONSE
+		c.JSON(http.StatusCreated, gin.H{"data": todo})
+	}
+}
+
 func createItem(server *structs.Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		//CONTROLLER PARSE
 		var todo Todo
-		if err := c.ShouldBindJSON(&todo); err != nil {
+		if err := c.BindJSON(&todo); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -87,8 +129,7 @@ func createItem(server *structs.Server) gin.HandlerFunc {
 		todo.CreatedAt = time.Now()
 		todo.UpdatedAt = time.Now()
 		todo.Id = uuid.New()
-		todo.Done = true
-		fmt.Println(todo)
+		todo.Done = false
 
 		//DB
 		res, err := server.Database.RedisJSONHandler.JSONSet("todo:"+todo.Id.String(), ".", todo)
@@ -145,6 +186,8 @@ func RouterItems(server *structs.Server) {
 	{
 		items.GET("/", getAllItems(server))
 		items.GET("/:todo-id", getItem(server))
+		items.DELETE("/:todo-id", deleteItem(server))
+		items.PUT("/:todo-id", updateItem(server)) // NOT WORKING PROPERLY
 		items.POST("/", createItem(server))
 		items.POST("/:todo-id/toggle-done", toggleItemDone(server))
 	}
